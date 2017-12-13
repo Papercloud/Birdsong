@@ -23,6 +23,7 @@ public final class Socket {
     
     fileprivate(set) public var channels: [String: Channel] = [:]
     
+    fileprivate(set) public var listeners: [String: ((Response) -> ())] = [:]
     fileprivate static let HeartbeatInterval = Int64(30 * NSEC_PER_SEC)
     fileprivate static let HeartbeatPrefix = "hb-"
     fileprivate var heartbeatQueue: DispatchQueue
@@ -78,6 +79,17 @@ public final class Socket {
         socket.disconnect()
     }
     
+
+    // MARK: - Listeners
+
+    public func addListener(_ event: String, closure: @escaping ((Response) -> ())) {
+        listeners[event] = closure
+    }
+
+    public func removeListener(event: String) {
+        listeners[event] = nil
+    }
+
     // MARK: - Channels
     
     public func channel(_ topic: String, payload: Payload = [:]) -> Channel {
@@ -183,6 +195,7 @@ extension Socket: WebSocketDelegate {
             }
 
             channels[response.topic]?.received(response)
+            listeners[response.event]?(response)
         } else {
             fatalError("Couldn't parse response: \(text)")
         }
